@@ -49,6 +49,7 @@ from paxml import tf_data_service_lib
 from paxml import train
 from paxml import trainer_lib
 from paxml import tuning_lib
+from paxml.contrib.gpu.scripts_gpu.te_helper import TransformerEngineHelper
 from praxis import pax_fiddle
 from praxis import py_utils
 
@@ -471,21 +472,22 @@ def _main(argv: Sequence[str]) -> None:
                                                       FLAGS.host_idx)
                      )
 
-  if FLAGS.exp is not None:
-    experiment_config = get_experiment(FLAGS.exp)()
-  elif absl_flags.fdl_flags_supplied():
-    cfg = absl_flags.create_buildable_from_flags(
-        module=None, allow_imports=True)
-    experiment_config = pax_fiddle.build(cfg)
-  else:
-    raise app.UsageError(
-        'No experiment provided. '
-        'At least one of --exp, --fdl_config, or --fdl_config_file is required.'
-    )
+  with TransformerEngineHelper.fp8_autocast('replica', 'mdl', 'data'):
+    if FLAGS.exp is not None:
+      experiment_config = get_experiment(FLAGS.exp)()
+    elif absl_flags.fdl_flags_supplied():
+      cfg = absl_flags.create_buildable_from_flags(
+          module=None, allow_imports=True)
+      experiment_config = pax_fiddle.build(cfg)
+    else:
+      raise app.UsageError(
+          'No experiment provided. '
+          'At least one of --exp, --fdl_config, or --fdl_config_file is required.'
+      )
 
-  experiment_config.validate()
-  run(experiment_config=experiment_config,
-      enable_checkpoint_saving=FLAGS.enable_checkpoint_saving)
+    experiment_config.validate()
+    run(experiment_config=experiment_config,
+        enable_checkpoint_saving=FLAGS.enable_checkpoint_saving)
 
 
 _TASK_HANDLE_RE = re.compile(r'(?:logs\.)?(\d+)\.(.*)\.([^.]+)\.\d+')
