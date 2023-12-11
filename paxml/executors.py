@@ -40,6 +40,7 @@ from praxis import base_layer
 from praxis import pax_fiddle
 from praxis import py_utils
 import tensorflow.compat.v2 as tf
+from paxml.cuda_api import cudaProfilerStart, cudaProfilerStop
 
 from paxml import checkpoints  # mapped to internal
 
@@ -402,6 +403,12 @@ def _train_and_evaluate_common(
           train_p.num_train_steps,
       )
       break
+
+    if step_i == 26 and jax.process_index() == 0:
+      cudaProfilerStart()
+
+    if step_i == 28 and jax.process_index() == 0:
+      cudaProfilerStop()
 
     program_output = train_program.run(partitioned_train_state, step_i)
     partitioned_train_state = program_output.state
